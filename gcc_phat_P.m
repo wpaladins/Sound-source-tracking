@@ -215,7 +215,7 @@ tau = 1000*linspace(-Nd/Fs,Nd/Fs,L*OV);
 [pks,locs] = findpeaks(Cmat(:,15)'); % 某一帧，因为语音信号是在说话人在某一确定状态时的，所以随意一帧即可
 xMat = [pks;locs];
 yMat = sortrows(xMat',1,'descend');
-disp(yMat);
+% disp(yMat);
 lengthyMat = length(yMat(:,1));
 if(lengthyMat > 4)
     lengthyMat = 4;
@@ -226,8 +226,8 @@ resultPre = yMat(1:lengthyMat,:);
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%求多假设似然模型%%%
 % 变量
-TSKG = tau(resultPre(:,2));
-TSMAX = 0.6/320;
+TSKG = tau(resultPre(:,2))/1000;
+TSMAX = 0.6/340;
 NG = lengthyMat; % lengthyMat个候选TDOA
 Q0 = 0.25;
 QG = 0.1825;
@@ -236,12 +236,11 @@ sigma = 50 * 10 ^ (-6); % 标准差
 % 求P
 sum = 0;
 for i=1:NG
-    sum = sum + QG * normpdf(TSKG(i),tdoaT,sigma);
+    temp = normpdf(TSKG(i),tdoaT,sigma);
+    disp(temp);
+    sum = sum + QG * temp;
 end
 P = (2 * TSMAX) ^ (1 - NG) * (Q0 / (2 * TSMAX) + sum);
-
-
-%-20190507-- P = max(Cmat(:,15)); %-20190507--
 
 return
 end

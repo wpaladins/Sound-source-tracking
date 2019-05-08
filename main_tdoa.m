@@ -126,20 +126,162 @@ for k=2:T
     we = 1;
 end
 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % 最终目标的计算
+Xmean_x_pf=mean(Xpf(:,:,1));
+Xmean_y_pf=mean(Xpf(:,:,2));
 
-Xmean_pf=mean(Xpf);  
+% Xmean_pf=mean(Xpf);
+
+% 
 bins=20;
-Xmap_pf=zeros(T,1);
+Xmap_x_pf=zeros(T,1);
+Xmap_y_pf=zeros(T,1);
 for k=1:T
-    [p,pos]=hist(Xpf(:,k,1),bins);
+    [p,pos]=hist(Xpf(:,k,1),bins); % [n,xout]=hist(Y,nbins); % nbins是间隔数，也就是说我们应该统计多少个间隔，n是每一个区间的个数，xout是区间的中心位置
     map=find(p==max(p));
-    Xmap_pf(k,1)=pos(map(1));  
+    Xmap_x_pf(k,1)=pos(map(1));  
 end
 for k=1:T
-    Xstd_pf(1,k)=std(Xpf(:,k)-X(k,1)); 
+    [p,pos]=hist(Xpf(:,k,2),bins);
+    map=find(p==max(p));
+    Xmap_y_pf(k,1)=pos(map(1));  
+end
+Xstd_x_pf = zeros(1,T);
+Xstd_y_pf = zeros(1,T);
+for k=1:T
+    Xstd_x_pf(1,k)=std(Xpf(:,k,1)-X(k,1)); 
+end
+for k=1:T
+    Xstd_y_pf(1,k)=std(Xpf(:,k,2)-X(k,1)); 
 end
 
+%--20190508 figure(11);clf;
+%--20190508 subplot(221);
+%--20190508 plot(v);
+%--20190508 xlabel('时间');
+%--20190508 ylabel('测量噪声','fontsize',15);
+%--20190508 subplot(222);
+%--20190508 plot(w);    
+%--20190508 xlabel('时间');
+%--20190508 ylabel('过程噪声','fontsize',15);
+%--20190508 subplot(223);
+%--20190508 plot(X);   
+%--20190508 xlabel('时间','fontsize',15);
+%--20190508 ylabel('状态X','fontsize',15);
+%--20190508 subplot(224);
+%--20190508 plot(Z);   
+%--20190508 xlabel('时间','fontsize',15);
+%--20190508 ylabel('观测Z','fontsize',15);
+
+
+figure(12);clf;  
+k=1:1:T;
+plot(k,X(:,1),'b',k,Xmean_x_pf,'r',k,Xmap_x_pf,'g'); 
+legend('系统真实状态值','后验均值估计','最大后验概率估计');
+xlabel('次数','fontsize',15);
+ylabel('X状态估计','fontsize',15);
+saveas(12,'./jpg/X估计值与真值.jpg'); % 保存
+
+figure(22);clf;  
+k=1:1:T;
+plot(k,X(:,2),'b',k,Xmean_y_pf,'r',k,Xmap_y_pf,'g'); 
+legend('系统真实状态值','后验均值估计','最大后验概率估计');
+xlabel('次数','fontsize',15);
+ylabel('Y状态估计','fontsize',15);
+saveas(22,'./jpg/Y估计值与真值.jpg'); % 保存
+
+
+%--20190508 figure(13);
+% subplot(121);
+%--20190508 plot(Xmean_x_pf,X(:,1),'+');
+%--20190508 xlabel('X后验均值估计','fontsize',15);
+%--20190508 ylabel('X真值','fontsize',15)
+%--20190508 hold on;
+%--20190508 c=0:1:5;
+%--20190508 plot(c,c,'r');
+%--20190508 axis([0 5 0 5]);
+%--20190508 hold off;
+
+%--20190508 subplot(122);  
+%--20190508 plot(Xmap_pf,X,'+')
+%--20190508 ylabel('真值','fontsize',15)
+%--20190508 xlabel('MAP估计','fontsize',15)
+%--20190508 hold on;
+%--20190508 c=-25:1:25;
+%--20190508 plot(c,c,'r');  
+%--20190508 axis([-25 25 -25 25]);
+%--20190508 hold off;
+
+%--20190508 figure(23);
+% subplot(121);
+%--20190508 plot(Xmean_y_pf,X(:,2),'+');
+%--20190508 xlabel('Y后验均值估计','fontsize',15);
+%--20190508 ylabel('Y真值','fontsize',15)
+%--20190508 hold on;
+%--20190508 c=0:1:5;
+%--20190508 plot(c,c,'r');
+%--20190508 axis([0 5 0 5]);
+%--20190508 hold off;
+
+%--20190508 subplot(122);  
+%--20190508 plot(Xmap_pf,X,'+')
+%--20190508 ylabel('真值','fontsize',15)
+%--20190508 xlabel('MAP估计','fontsize',15)
+%--20190508 hold on;
+%--20190508 c=-25:1:25;
+%--20190508 plot(c,c,'r');  
+%--20190508 axis([-25 25 -25 25]);
+%--20190508 hold off;
+ 
+%--20190508 domain=zeros(numSamples,1);
+%--20190508 range=zeros(numSamples,1);
+%--20190508 bins=10;
+%--20190508 support=[-20:1:20];
+
+
+%--20190508 figure(14);hold on; 
+%--20190508 xlabel('样本空间','fontsize',15);
+%--20190508 ylabel('时间','fontsize',15);
+%--20190508 zlabel('后验密度','fontsize',15);
+%--20190508 vect=[0 1];
+%--20190508 caxis(vect);
+%--20190508 for k=1:T
+  
+%--20190508     [range,domain]=hist(Xpf(:,k),support);
+   
+%--20190508     waterfall(domain,k,range);
+%--20190508 end
+%--20190508 axis([-20 20 0 T 0 100]);
+ 
+%--20190508 figure(15);
+%--20190508 hold on; box on;
+%--20190508 xlabel('样本空间','fontsize',15);
+%--20190508 ylabel('后验密度','fontsize',15); 
+%--20190508 k=30;   
+%--20190508 [range,domain]=hist(Xpf(:,k),support);
+%--20190508 plot(domain,range);
+ 
+%--20190508 XXX=[X(k,1),X(k,1)];
+%--20190508 YYY=[0,max(range)+10]
+%--20190508 line(XXX,YYY,'Color','r');
+%--20190508 axis([min(domain) max(domain) 0 max(range)+10]);
+ 
+figure(16);
+k=1:1:T;
+plot(k,Xstd_x_pf,'-');
+xlabel('次数');ylabel('X状态估计误差标准差');
+axis([0,T,0,1]);
+saveas(16,'./jpg/X状态估计误差标准差.jpg'); % 保存
+
+figure(26);
+k=1:1:T;
+plot(k,Xstd_y_pf,'-');
+xlabel('次数');ylabel('Y状态估计误差标准差');
+axis([0,T,0,1]);
+saveas(26,'./jpg/Y状态估计误差标准差.jpg'); % 保存
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 % 程序结束提醒
 disp('Done');
