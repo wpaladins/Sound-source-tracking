@@ -212,31 +212,36 @@ tau = 1000*linspace(-Nd/Fs,Nd/Fs,L*OV);
 % figure;
 % plot(Cmat(:,15)); 
 % 可优化，这里找到的所有的波峰，但是没有必要
-%-20190507-- [pks,locs] = findpeaks(Cmat(:,15)'); % 某一帧，因为语音信号是在说话人在某一确定状态时的，所以随意一帧即可
-%-20190507-- xMat = [pks;locs];
-%-20190507-- yMat = sortrows(xMat',1,'descend');
-%-20190507-- resultPre = yMat(1:4,:);
+[pks,locs] = findpeaks(Cmat(:,15)'); % 某一帧，因为语音信号是在说话人在某一确定状态时的，所以随意一帧即可
+xMat = [pks;locs];
+yMat = sortrows(xMat',1,'descend');
+disp(yMat);
+lengthyMat = length(yMat(:,1));
+if(lengthyMat > 4)
+    lengthyMat = 4;
+end
+resultPre = yMat(1:lengthyMat,:);
 % gcc_phatResult = [resultPre(:,1)';tau(resultPre(:,2))]'; % 第一列：波峰高度；第二列：TDOA
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%求多假设似然模型%%%
 % 变量
-%-20190507-- TSKG = tau(resultPre(:,2));
-%-20190507-- TSMAX = 0.6/320;
-%-20190507-- NG = 4; % 4个候选TDOA
-%-20190507-- Q0 = 0.25;
-%-20190507-- QG = 0.1825;
-%-20190507-- sigma = 50 * 10 ^ (-6); % 标准差
+TSKG = tau(resultPre(:,2));
+TSMAX = 0.6/320;
+NG = lengthyMat; % lengthyMat个候选TDOA
+Q0 = 0.25;
+QG = 0.1825;
+sigma = 50 * 10 ^ (-6); % 标准差
 
 % 求P
-%-20190507-- sum = 0;
-%-20190507-- for i=1:NG
-%-20190507--     sum = sum + QG * normpdf(TSKG(i),tdoaT,sigma);
-%-20190507-- end
-%-20190507-- P = (2 * TSMAX) ^ (1 - NG) * (Q0 / (2 * TSMAX) + sum);
+sum = 0;
+for i=1:NG
+    sum = sum + QG * normpdf(TSKG(i),tdoaT,sigma);
+end
+P = (2 * TSMAX) ^ (1 - NG) * (Q0 / (2 * TSMAX) + sum);
 
 
-P = max(Cmat(:,15)); %-20190507--
+%-20190507-- P = max(Cmat(:,15)); %-20190507--
 
 return
 end
