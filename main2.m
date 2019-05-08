@@ -38,7 +38,7 @@ for k=1:T
     % awgn1 = awgn(conv1,SNR);
     % awgn2 = awgn(conv2,SNR);
     tdoaT = tdoaT_generator(X(k,[1,2]),[1.2,0.5],[1.8,0.5]); % 获取理论TDOA，麦克风位置：(1.2, 0.5)和(1.8, 0.5)
-    Z(k,1) = gcc_phat(conv1,conv2,tdoaT); % 高斯白噪声未添加
+    Z(k,1) = gcc_phat_tdoa(conv1,conv2,tdoaT); % 高斯白噪声未添加
 end
 
 % 2.3. 真实状态信息展示
@@ -56,7 +56,7 @@ Xpf=zeros(numSamples,T,4); % 行代表某一个粒子，列代表某一个时刻
 Xparticles=zeros(numSamples,T,4); % 行代表某一个粒子，列代表某一个时刻，值为这个粒子在当前时刻的 粒子滤波前的 状态
 Zpre_pf=zeros(numSamples,T); % 行代表某一个粒子，列代表某一个时刻，值为这个粒子在当前时刻的 观测值
 weight=zeros(numSamples,T); % 行代表某一个粒子，列代表某一个时刻，值为这个粒子在当前时刻的 权重
-QQQ = 0.1; % 高斯滤波的权值的平方[---待确认---]
+QQQ = 0.01; % 高斯滤波的权值的平方[---待确认---]
 
 % 粒子初始化[---待确认---]这里使用了真实值
 Xpf(:,1,:)=X(1,:)+sqrt(QQQ)*randn(numSamples,4); % 初始粒子状态，使用高斯滤波对真实状态处理产生
@@ -75,7 +75,7 @@ for i=1:numSamples % 产生每个粒子对应的 观测值
     conv1 = conv(xn_frams(:,1),h1);
     conv2 = conv(xn_frams(:,1),h2);
     tdoaT = tdoaT_generator(temp,[1.2,0.5],[1.8,0.5]);
-    Zpre_pf(i,1) = gcc_phat(conv1,conv2,tdoaT); % 无需噪声？[---待确认---]
+    Zpre_pf(i,1) = gcc_phat_tdoa(conv1,conv2,tdoaT); % 无需噪声？[---待确认---]
 end
 
 % 粒子滤波核心循环
@@ -111,7 +111,7 @@ for k=2:T
         conv1 = conv(xn_frams(:,k),h1);
         conv2 = conv(xn_frams(:,k),h2);
         tdoaT = tdoaT_generator(temp,[1.2,0.5],[1.8,0.5]);
-        Zpre_pf(i,k) = gcc_phat(conv1,conv2,tdoaT);
+        Zpre_pf(i,k) = gcc_phat_tdoa(conv1,conv2,tdoaT);
         % 求粒子权重
         weight(i,k) = exp(-.5*0.001^(-1)*(Z(k,1)- Zpre_pf(i,k))^2); % R[---待确定---]
     end

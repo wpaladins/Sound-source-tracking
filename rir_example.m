@@ -16,7 +16,7 @@ r1 = [1.2 0.5 1.5];         % Receiver position [x y z] (m)
 r2 = [1.8 0.5 1.5];         % Receiver position [x y z] (m)
 % s = [1 2 1.5];              % Source position [x y z] (m)
 L = [5 4 6];                % Room dimensions [x y z] (m)
-beta = 0.2;                 % Reverberation time (s)
+beta = 0;                 % Reverberation time (s)
 n = 4096;                   % Number of samples
 % 生成rir
 h1 = rir_generator(c, fs, r1, s, L, beta, n);
