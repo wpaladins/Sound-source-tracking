@@ -46,6 +46,44 @@ Zpre_pf=zeros(numSamples,T); % 行代表某一个粒子，列代表某一个时�
 weight=zeros(numSamples,T); % 行代表某一个粒子，列代表某一个时刻，值为这个粒子在当前时刻的 权重
 QQQ = 0.01; % 高斯滤波的权值的平方[---待确认---]
 
+%%%%%%%%%%%%%%%%%%%%PSO%%%%%%%%%%%%%%%%%%%%
+problem.CostFunction = @(R,x,y)CostFunction(R,x,y);
+problem.nVar =5;      % Number of Unknown (Decision) Variables
+problem.VarMin = 0;   % Lower Bound of Decision Variables最小位置[---待确定---]
+problem.VarMax = 5;   % Upper Bound of Decision Variables最大位置[---待确定---]
+% PSO程序的数值赋予
+params.MaxIt = 20;          % Maximum Number of Iterations迭代次数[---待确定---]
+params.nPop = numSamples;   % Population Size (Swarm Size)粒子数目
+params.c1 = 2;              % Personal Acceleration Coefficient学习因子[---待确定---]
+params.c2 = 2;              % Social Acceleration Coefficient学习因子[---待确定---]
+
+CostFunction = problem.CostFunction;
+nVar = problem.nVar;        % Number of Unknown (Decision) Variables
+VarSize = [nVar 1];         % Matrix Size of Decision Variables
+VarMin = problem.VarMin;	% Lower Bound of Decision Variables
+VarMax = problem.VarMax;    % Upper Bound of Decision Variables
+% PSO参数
+MaxIt = params.MaxIt;   % Maximum Number of Iterations最大迭代次数
+nPop = params.nPop;     % Population Size (Swarm Size)粒子的数目
+c1 = params.c1;         % Personal Acceleration Coefficient
+c2 = params.c2;         % Social Acceleration Coefficient
+MaxVelocity = 1; % 最大速度[---待确定---]
+MinVelocity = - MaxVelocity; % [---待确定---]
+
+%初始化粒子的状态：
+GlobalBestCost = 0;
+GlobalBestPosition = [0,0];
+particleBestCost = zeros(numSamples);
+particleBestPosition = zeros(numSamples,2);
+
+% PSO变量
+iparticles = zeros(T,2);
+particlePosition = zeros(numSamples,2);
+particleVelocity = zeros(numSamples,2);
+particleCost = zeros(numSamples);
+Spf = zeros(T,2);
+%%%%%%%%%%%%%%%%%%%%PSO%%%%%%%%%%%%%%%%%%%%
+
 % 粒子初始化[---待确认---]这里使用了真实值
 Xpf(:,1,:)=X(1,:)+sqrt(QQQ)*randn(numSamples,4); % 初始粒子状态，使用高斯滤波对真实状态处理产生
 
@@ -80,14 +118,14 @@ for k=2:T
     
     % 通过对 上一时刻的粒子状态 使用 状态方程，得到 这一时刻的粒子状态
     for i=1:numSamples
-        QQ=0.01; % 网[---待确定---]
-        net=sqrt(QQ)*randn(4,1); % 网[---待确定---]
+        QQ=0.01; % 网
+        net=sqrt(QQ)*randn(4,1); % 网
         temp = zeros(1,4); % temp为上一时刻 当前粒子的 状态
         temp(1) = Xpf(i,k-1,1);
         temp(2) = Xpf(i,k-1,2);
         temp(3) = Xpf(i,k-1,3);
         temp(4) = Xpf(i,k-1,4);
-        Xparticles(i,k,:) = langevin(temp' )' + net';% 网[---待确定---]
+        Xparticles(i,k,:) = langevin(temp' )' + net';% 网
     end
     
     % 画图查看粒子变化
@@ -105,8 +143,6 @@ for k=2:T
         temp = zeros(1,2);
         temp(1) = Xparticles(i,k,1);
         temp(2) = Xparticles(i,k,2);
-        disp('粒子位置');
-        disp(temp);
         s1_tdoaT = tdoaT_generator(temp,s1r1,s1r2);
         s2_tdoaT = tdoaT_generator(temp,s2r1,s2r2);
         s3_tdoaT = tdoaT_generator(temp,s3r1,s3r2);
@@ -139,7 +175,100 @@ for k=2:T
     % 产生粒子滤波后的 所有粒子
     Xpf(:,k,:)= Xparticles(outIndex,k,:);
     
-    we = 1;
+    %%%%%%%%%%%%%%%%%%%%接下来是PSO优化后的计算权重的步骤%%%%%%%%%%%
+    % 对粒子滤波产生的状态估计进行处理
+    for i=1:numSamples
+        iparticles(k,1) = iparticles(k,1) + Xparticles(i,k,1) * weight(i,k); % x  
+        iparticles(k,2) = iparticles(k,2) + Xparticles(i,k,2) * weight(i,k); % y
+    end
+    
+    %初始化粒子的状态
+    for i=1:nPop
+        particlePosition(i,:) = Xparticles(i,k,1:2); % 将重采样后粒子的实际值带入到particle.position中去
+        particleVelocity(i,:) = [0,0]; % 粒子所有的初始速度为0
+        particleCost(i) = CostFunction(nPop,particlePosition(i,:),iparticles(k,:));%对这些测量值计算权重
+        % Update the Personal Best
+        particleBestCost(i) = particleCost(i);
+        particleBestPosition(i,:) = particlePosition(i,:);
+        % Update Global Best
+        if particleBestCost(i) > GlobalBestCost
+            GlobalBestPosition = particleBestPosition(i,:);
+            GlobalBestCost = particleBestCost(i);
+        end
+    end
+    
+    % 迭代
+    for it=1:MaxIt
+        for i=1:nPop
+            %这里是由同一时刻的nPop个粒子的真实状态，套入函数中来计算nPop个粒子的测量值
+            w1=0.3*exp(1-it/MaxIt);
+            particleVelocity(i,1) = w1*particleVelocity(i,1) ... % x
+                + c1*rand().*(particleBestPosition(i,1) - particlePosition(i,1)) ...
+                + c2*rand().*(GlobalBestPosition(1) - particlePosition(i,1));
+            particleVelocity(i,2) = w1*particleVelocity(i,2) ... % y
+                + c1*rand().*(particleBestPosition(i,2) - particlePosition(i,2)) ...
+                + c2*rand().*(GlobalBestPosition(2) - particlePosition(i,2));
+
+            % Apply Velocity Limits确保粒子的速度在速度限制范围之内
+            particleVelocity(i,1) = max(particleVelocity(i,1), MinVelocity);
+            particleVelocity(i,1) = min(particleVelocity(i,1), MaxVelocity);
+            particleVelocity(i,2) = max(particleVelocity(i,2), MinVelocity);
+            particleVelocity(i,2) = min(particleVelocity(i,2), MaxVelocity);
+
+            % Update Position
+            particlePosition(i,1) = particlePosition(i,1) + particleVelocity(i,1);
+            particlePosition(i,2) = particlePosition(i,2) + particleVelocity(i,2);
+
+            % Apply Lower and Upper Bound Limits确保粒子的位置在范围之内
+            particlePosition(i,1) = max(particlePosition(i,1), VarMin);
+            particlePosition(i,1) = min(particlePosition(i,1), VarMax);
+            particlePosition(i,2) = max(particlePosition(i,2), VarMin);
+            particlePosition(i,2) = min(particlePosition(i,2), VarMax);
+
+            % Evaluation%每个粒子经过运动后的新的权值
+            particleCost(i) = CostFunction(nPop,particlePosition(i,:),iparticles(k,:));
+            if  particleCost(i) > particleBestCost(i)
+                particleBestPosition(i,:)= particlePosition(i,:);
+                particleBestCost(i) = particleCost(i);
+                
+                % Update Global Best
+                if particleBestCost(i) > GlobalBestCost
+                    GlobalBestCost = particleBestCost(i);
+                    GlobalBestPosition = particleBestPosition(i,:);
+                end
+            end
+        end
+    end
+    
+    % 带入Xpf(:,k,:)并重新计算权重
+    for i=1:nPop
+        temp = particlePosition(i,:);
+        Xpf(i,k,1:2) = temp;
+        s1_tdoaT = tdoaT_generator(temp,s1r1,s1r2);
+        s2_tdoaT = tdoaT_generator(temp,s2r1,s2r2);
+        s3_tdoaT = tdoaT_generator(temp,s3r1,s3r2);
+        s4_tdoaT = tdoaT_generator(temp,s4r1,s4r2);
+        
+        % 更新粒子权重
+        weight(i,k) = particle_weight_generator(s1_gccResult,s1_Nd,...
+                                                s2_gccResult,s2_Nd,...
+                                                s3_gccResult,s3_Nd,...
+                                                s4_gccResult,s4_Nd,...
+                                                fs,...
+                                                s1_tdoaT,...
+                                                s2_tdoaT,...
+                                                s3_tdoaT,...
+                                                s4_tdoaT);
+    end
+    
+    
+    Spf(k,:)=GlobalBestPosition;
+    
+    % 重新置0
+    GlobalBestCost = 0;
+    GlobalBestPosition = [0,0];
+    particleBestCost = zeros(numSamples);
+    particleBestPosition = zeros(numSamples,2);
 end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -147,9 +276,6 @@ end
 Xmean_x_pf=mean(Xpf(:,:,1));
 Xmean_y_pf=mean(Xpf(:,:,2));
 
-% Xmean_pf=mean(Xpf);
-
-% 
 bins=20;
 Xmap_x_pf=zeros(T,1);
 Xmap_y_pf=zeros(T,1);
@@ -166,32 +292,13 @@ end
 Xstd_x_pf = zeros(1,T);
 Xstd_y_pf = zeros(1,T);
 for k=1:T
-    Xstd_x_pf(1,k)=std(Xpf(:,k,1)-X(k,1)); 
+    Xstd_x_pf(1,k)=std(Xpf(:,k,1)-X(k,1));
 end
 for k=1:T
-    Xstd_y_pf(1,k)=std(Xpf(:,k,2)-X(k,2)); 
+    Xstd_y_pf(1,k)=std(Xpf(:,k,2)-X(k,2));
 end
 
-%--20190508 figure(11);clf;
-%--20190508 subplot(221);
-%--20190508 plot(v);
-%--20190508 xlabel('时间');
-%--20190508 ylabel('测量噪声','fontsize',15);
-%--20190508 subplot(222);
-%--20190508 plot(w);    
-%--20190508 xlabel('时间');
-%--20190508 ylabel('过程噪声','fontsize',15);
-%--20190508 subplot(223);
-%--20190508 plot(X);   
-%--20190508 xlabel('时间','fontsize',15);
-%--20190508 ylabel('状态X','fontsize',15);
-%--20190508 subplot(224);
-%--20190508 plot(Z);   
-%--20190508 xlabel('时间','fontsize',15);
-%--20190508 ylabel('观测Z','fontsize',15);
-
-
-figure(12);clf;  
+figure(12);clf;
 k=1:1:T;
 plot(k,X(:,1),'b',k,Xmean_x_pf,'r',k,Xmap_x_pf,'g'); 
 legend('系统真实状态值','后验均值估计','最大后验概率估计');
@@ -207,82 +314,6 @@ xlabel('次数','fontsize',15);
 ylabel('Y状态估计','fontsize',15);
 saveas(22,'./jpg/Y估计值与真值.jpg'); % 保存
 
-
-%--20190508 figure(13);
-% subplot(121);
-%--20190508 plot(Xmean_x_pf,X(:,1),'+');
-%--20190508 xlabel('X后验均值估计','fontsize',15);
-%--20190508 ylabel('X真值','fontsize',15)
-%--20190508 hold on;
-%--20190508 c=0:1:5;
-%--20190508 plot(c,c,'r');
-%--20190508 axis([0 5 0 5]);
-%--20190508 hold off;
-
-%--20190508 subplot(122);  
-%--20190508 plot(Xmap_pf,X,'+')
-%--20190508 ylabel('真值','fontsize',15)
-%--20190508 xlabel('MAP估计','fontsize',15)
-%--20190508 hold on;
-%--20190508 c=-25:1:25;
-%--20190508 plot(c,c,'r');  
-%--20190508 axis([-25 25 -25 25]);
-%--20190508 hold off;
-
-%--20190508 figure(23);
-% subplot(121);
-%--20190508 plot(Xmean_y_pf,X(:,2),'+');
-%--20190508 xlabel('Y后验均值估计','fontsize',15);
-%--20190508 ylabel('Y真值','fontsize',15)
-%--20190508 hold on;
-%--20190508 c=0:1:5;
-%--20190508 plot(c,c,'r');
-%--20190508 axis([0 5 0 5]);
-%--20190508 hold off;
-
-%--20190508 subplot(122);  
-%--20190508 plot(Xmap_pf,X,'+')
-%--20190508 ylabel('真值','fontsize',15)
-%--20190508 xlabel('MAP估计','fontsize',15)
-%--20190508 hold on;
-%--20190508 c=-25:1:25;
-%--20190508 plot(c,c,'r');  
-%--20190508 axis([-25 25 -25 25]);
-%--20190508 hold off;
- 
-%--20190508 domain=zeros(numSamples,1);
-%--20190508 range=zeros(numSamples,1);
-%--20190508 bins=10;
-%--20190508 support=[-20:1:20];
-
-
-%--20190508 figure(14);hold on; 
-%--20190508 xlabel('样本空间','fontsize',15);
-%--20190508 ylabel('时间','fontsize',15);
-%--20190508 zlabel('后验密度','fontsize',15);
-%--20190508 vect=[0 1];
-%--20190508 caxis(vect);
-%--20190508 for k=1:T
-  
-%--20190508     [range,domain]=hist(Xpf(:,k),support);
-   
-%--20190508     waterfall(domain,k,range);
-%--20190508 end
-%--20190508 axis([-20 20 0 T 0 100]);
- 
-%--20190508 figure(15);
-%--20190508 hold on; box on;
-%--20190508 xlabel('样本空间','fontsize',15);
-%--20190508 ylabel('后验密度','fontsize',15); 
-%--20190508 k=30;   
-%--20190508 [range,domain]=hist(Xpf(:,k),support);
-%--20190508 plot(domain,range);
- 
-%--20190508 XXX=[X(k,1),X(k,1)];
-%--20190508 YYY=[0,max(range)+10]
-%--20190508 line(XXX,YYY,'Color','r');
-%--20190508 axis([min(domain) max(domain) 0 max(range)+10]);
- 
 figure(16);
 k=1:1:T;
 plot(k,Xstd_x_pf,'-');
