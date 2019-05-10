@@ -26,28 +26,10 @@ for i=1:T-1 % 速度只有T为1:T-1有
     X(i,4) = (X(i+1,2) - X(i,2) ) / dT; % y方向的速度
 end % 速度完成
 
-% 2.2. 观测值
-Z=zeros(T,1); % 观测值为四个候选TDOA中最大的一个
-for k=1:T
-    % 将X(k,:)作为说话人位置发给rir_example
-    [h1,h2] = rir_example(X(k,[1,2]));
-    % 将h1,h2分别与真实信号做卷积
-    conv1 = conv(xn_frams(:,k),h1);
-    conv2 = conv(xn_frams(:,k),h2);
-    % 添加高斯白噪声
-    % awgn1 = awgn(conv1,SNR);
-    % awgn2 = awgn(conv2,SNR);
-    tdoaT = tdoaT_generator(X(k,[1,2]),[1.2,0.5],[1.8,0.5]); % 获取理论TDOA，麦克风位置：(1.2, 0.5)和(1.8, 0.5)
-    Z(k,1) = gcc_phat_P(conv1,conv2,tdoaT); % 高斯白噪声未添加
-end
-
 % 2.3. 真实状态信息展示
 % figure;
 % plot(X(:,1),X(:,2),'b.');
 % axis([0 5 0 5]);
-% 2.4. 观测值信息展示
-% figure;
-% plot(Z,'r');
 
 % 3. 粒子滤波
 % 3.1. 各项参数
@@ -67,19 +49,16 @@ plot(Xpf(:,1,1),Xpf(:,1,2),'g.',X(1,1),X(1,2),'r.');
 axis([0 5 0 5]);
 saveas(1,'./jpg/1.jpg');
 
-for i=1:numSamples % 产生每个粒子对应的 观测值
-    temp = zeros(1,2); % temp为粒子所在位置
-    temp(1) = Xpf(i,1,1);
-    temp(2) = Xpf(i,1,2);
-    [h1,h2] = rir_example(temp);
-    conv1 = conv(xn_frams(:,1),h1);
-    conv2 = conv(xn_frams(:,1),h2);
-    tdoaT = tdoaT_generator(temp,[1.2,0.5],[1.8,0.5]);
-    Zpre_pf(i,1) = gcc_phat_P(conv1,conv2,tdoaT); % 无需噪声？[---待确认---]
-end
-
 % 粒子滤波核心循环
 for k=2:T
+    % 得到gccResult,Nd
+    [h1,h2] = rir_example(X(k,[1,2]));
+    conv1 = conv(rawWav,h1);
+    conv2 = conv(rawWav,h2);
+    [gccResult,Nd] = gcc_phat_w(conv1,conv2);
+    disp('真实位置');
+    disp(X(k,[1,2]));
+
     % 通过对 上一时刻的粒子状态 使用 状态方程，得到 这一时刻的粒子状态
     for i=1:numSamples
         QQ=0.01; % 网[---待确定---]
@@ -103,20 +82,25 @@ for k=2:T
     
     % 粒子权重处理
     for i=1:numSamples
-        % 得到粒子在当前时刻的观测值
         temp = zeros(1,2);
         temp(1) = Xparticles(i,k,1);
         temp(2) = Xparticles(i,k,2);
-        [h1,h2] = rir_example(temp);
-        conv1 = conv(xn_frams(:,k),h1);
-        conv2 = conv(xn_frams(:,k),h2);
+        disp('粒子位置');
+        disp(temp);
         tdoaT = tdoaT_generator(temp,[1.2,0.5],[1.8,0.5]);
-        Zpre_pf(i,k) = gcc_phat_P(conv1,conv2,tdoaT);
         % 更新粒子权重
-        weight(i,k) = exp(-.5*0.001^(-1)*(Z(k,1)- Zpre_pf(i,k))^2); % R[---待确定---]
+        weight(i,k) = particle_weight_generator(gccResult,Nd,fs,tdoaT);
     end
-    weight(:,k)=weight(:,k)./sum(weight(:,k));
     
+    figure(3) % 权重图
+    plot3(Xparticles(:,k,1),Xparticles(:,k,2),weight(:,k));
+    axis([0 5 0 5]);
+    jpg = strcat('./jpg/p',num2str(k));
+    jpg = strcat(jpg,'.jpg');
+    saveas(3,jpg);
+    
+    weight(:,k)=weight(:,k)./sum(weight(:,k));
+
     % 粒子 重新采样
     outIndex = multinomialR(weight(:,k));
     

@@ -1,4 +1,4 @@
-function [P] = gcc_phat_P(x1,x2,tdoaT)
+function [result,Nd] = gcc_phat_w(x1,x2,~)
 %function phi = gcc_phat(alg,x1,x2,dx,N,Fs)
 %
 % direction estimation (azimuth phi) for 1 dim. microphone arrays
@@ -160,87 +160,12 @@ for t2=0:0.1:T
     % np=dt*600
     phi2(ind)=acos(delta(ind)/0.2)/pi*180;
 end
-%figure
-%plot(ind2,phi2);
-%figure
-%plot(ind2,l)
-%figure
-%plot(ind2,delta)
-%-wxs subplot(2,1,2);
-%-wxs x1aux=x1/max(x1);
-%-wxs x1_resample=resample(x1aux,32000,Fs);
-%-wxs spectrogram(x1_resample,hamming(1024),512,1024,32000,'yaxis')
-%spectrogram(x1,kaiser(1024,5),256,2048,Fs,'yaxis');
-%axis([0 15 0 16]);
-%-wxs grid on
-%-wxs subplot(2,1,1);
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%-wxs plot(t,phi,ind2,phi2);
-%axis([0 13 0 180]);
-%-wxs xlabel('Time t in sec.'), ylabel('Azimuth \phi in deg.');
-%-wxs title(['d = ', num2str(100*dx),' cm,  ', 'F_s = ', num2str(Fs), ' Hz']);
-%-wxs grid on, 
-%-wxs axis tight
-%axis([0 50 0 180]);
-%set(gca,'PlotBoxAspectRatio',[1 0.5 0.5]);
 
-% plot Cxy
-
-%-wxs pos = [0.5055 0.5 0.49 0.42];
-%-wxs fp1 = figure('numbertitle','off','name','Generalized cross correlation',...
-%-wxs 	     'Units','normal','Position',pos);
-%-wxs colordef(fp1,figurebackcolor);
 
 tau = 1000*linspace(-Nd/Fs,Nd/Fs,L*OV);
-%-wxs imagesc(t,tau,Cmat); colormap(cool), colorbar
 
-%map = colormap('gray');
-%colormap(flipud(map));
-%imagesc(t,tau,Cmat); % colorbar;
-%-wxs set(gca,'YDir','normal');
-%-wxs ylabel('Delay \tau in msec.');
-%-wxs xlabel('Time t in sec.');
-%-wxs if alg == 1
-%-wxs   title('Generalized SCOT cross correlation function R_{x_1x_2}(\tau,t)');
-%-wxs else
-%-wxs   title('Generalized PHAT cross correlation function R_{x_1x_2}(\tau,t)');
-%-wxs end
-%set(gca,'PlotBoxAspectRatio',[1 0.5 0.5]);
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%%%数据处理%%%
-% figure;
-% plot(Cmat(:,15)); 
-% 可优化，这里找到的所有的波峰，但是没有必要
-[pks,locs] = findpeaks(Cmat(:,15)'); % 某一帧，因为语音信号是在说话人在某一确定状态时的，所以随意一帧即可
-xMat = [pks;locs];
-yMat = sortrows(xMat',1,'descend');
-% disp(yMat);
-lengthyMat = length(yMat(:,1));
-if(lengthyMat > 4)
-    lengthyMat = 4;
-end
-resultPre = yMat(1:lengthyMat,:);
-% gcc_phatResult = [resultPre(:,1)';tau(resultPre(:,2))]'; % 第一列：波峰高度；第二列：TDOA
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%%%求多假设似然模型%%%
-% 变量
-TSKG = tau(resultPre(:,2))/1000;
-TSMAX = 0.6/340;
-NG = lengthyMat; % lengthyMat个候选TDOA
-Q0 = 0.25;
-QG = 0.1825;
-sigma = 50 * 10 ^ (-6); % 标准差
-
-% 求P
-sum = 0;
-for i=1:NG
-    temp = normpdf(TSKG(i),tdoaT,sigma);
-    disp(temp);
-    sum = sum + QG * temp;
-end
-P = (2 * TSMAX) ^ (1 - NG) * (Q0 / (2 * TSMAX) + sum);
+% 横坐标为TDOA，纵坐标为GCC值（信号强度）
+result = Cmat(:,15)'; % tau转换之后横坐标为TDOA
 
 return
 end
