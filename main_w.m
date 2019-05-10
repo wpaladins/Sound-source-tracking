@@ -63,17 +63,17 @@ for k=2:T
     conv2 = conv(rawWav,h2);
     [s1_gccResult,s1_Nd] = gcc_phat_w(conv1,conv2);
     % 得到s2_gccResult,s2_Nd
-    [h1,h2] = rir_example(X(k,[1,2]),s1r1,s1r2);
+    [h1,h2] = rir_example(X(k,[1,2]),s2r1,s2r2);
     conv1 = conv(rawWav,h1);
     conv2 = conv(rawWav,h2);
     [s2_gccResult,s2_Nd] = gcc_phat_w(conv1,conv2);
     % 得到s3_gccResult,s3_Nd
-    [h1,h2] = rir_example(X(k,[1,2]),s1r1,s1r2);
+    [h1,h2] = rir_example(X(k,[1,2]),s3r1,s3r2);
     conv1 = conv(rawWav,h1);
     conv2 = conv(rawWav,h2);
     [s3_gccResult,s3_Nd] = gcc_phat_w(conv1,conv2);
     % 得到s4_gccResult,s4_Nd
-    [h1,h2] = rir_example(X(k,[1,2]),s1r1,s1r2);
+    [h1,h2] = rir_example(X(k,[1,2]),s4r1,s4r2);
     conv1 = conv(rawWav,h1);
     conv2 = conv(rawWav,h2);
     [s4_gccResult,s4_Nd] = gcc_phat_w(conv1,conv2);
@@ -95,6 +95,7 @@ for k=2:T
     figure(2)
     plot(Xparticles(:,k,1),Xparticles(:,k,2),'g.',X(k,1),X(k,2),'r.',X(k-1,1),X(k-1,2),'b.',Xpf(:,k-1,1),Xpf(:,k-1,2),'y.');
     axis([0 5 0 5]);
+    title(num2str(k));
     jpg = strcat('./jpg/',num2str(k));
     jpg = strcat(jpg,'.jpg');
     saveas(2,jpg);

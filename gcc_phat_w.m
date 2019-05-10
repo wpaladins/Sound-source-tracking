@@ -1,4 +1,4 @@
-function [result,Nd] = gcc_phat_w(x1,x2,~)
+function [result,Ndo] = gcc_phat_w(x1,x2,~)
 %function phi = gcc_phat(alg,x1,x2,dx,N,Fs)
 %
 % direction estimation (azimuth phi) for 1 dim. microphone arrays
@@ -161,11 +161,10 @@ for t2=0:0.1:T
     phi2(ind)=acos(delta(ind)/0.2)/pi*180;
 end
 
-
 tau = 1000*linspace(-Nd/Fs,Nd/Fs,L*OV);
 
 % 横坐标为TDOA，纵坐标为GCC值（信号强度）
-result = Cmat(:,15)'; % tau转换之后横坐标为TDOA
+result = mean(Cmat,2); % tau转换之后横坐标为TDOA
 
 return
 end
