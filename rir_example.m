@@ -1,4 +1,4 @@
-function [h1,h2]  = rir_example(sp)
+function [h1,h2]  = rir_example(sp,r1p,r2p)
 % 房屋环境：5m x 5m x 3m
 % 笛卡尔坐标系中：
 % 说话人初始位置：sp(1, 2)
@@ -10,12 +10,14 @@ if nargin < 1
    return
 end
 s = [sp,1.5];
+r1 = [r1p,1.5];
+r2 = [r2p,1.5];
 c = 340;                    % Sound velocity (m/s)
 fs = 16000;                 % Sample frequency (samples/s)
-r1 = [1.2 0.5 1.5];         % Receiver position [x y z] (m)
-r2 = [1.8 0.5 1.5];         % Receiver position [x y z] (m)
+% r1 = [1.2 0.5 1.5];         % Receiver position [x y z] (m)
+% r2 = [1.8 0.5 1.5];         % Receiver position [x y z] (m)
 % s = [1 2 1.5];              % Source position [x y z] (m)
-L = [5 4 6];                % Room dimensions [x y z] (m)
+L = [5 5 3];                % Room dimensions [x y z] (m)
 beta = 0;                 % Reverberation time (s)
 n = 4096;                   % Number of samples
 % 生成rir

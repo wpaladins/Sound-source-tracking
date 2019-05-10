@@ -6,6 +6,12 @@ randn('seed',50);  %#ok<*RAND>
 
 dT = 0.032;
 
+% 麦克风位置
+s1r1 = [2.2,0.5]; s1r2 = [2.8,0.5];
+s2r1 = [2.2,4.5]; s2r2 = [2.8,4.5];
+s3r1 = [0.5,2.2]; s3r2 = [0.5,2.8];
+s4r1 = [4.5,2.2]; s4r2 = [4.5,2.8];
+
 % 1. 分帧
 rawWav = wavread('raw.wav'); %#ok<*DWVRD>，读取的wav文件，频率与Image模型统一，此处为16000HZ
 fs = 16000;
@@ -51,14 +57,27 @@ saveas(1,'./jpg/1.jpg');
 
 % 粒子滤波核心循环
 for k=2:T
-    % 得到gccResult,Nd
-    [h1,h2] = rir_example(X(k,[1,2]));
+    % 得到s1_gccResult,s1_Nd
+    [h1,h2] = rir_example(X(k,[1,2]),s1r1,s1r2);
     conv1 = conv(rawWav,h1);
     conv2 = conv(rawWav,h2);
-    [gccResult,Nd] = gcc_phat_w(conv1,conv2);
-    disp('真实位置');
-    disp(X(k,[1,2]));
-
+    [s1_gccResult,s1_Nd] = gcc_phat_w(conv1,conv2);
+    % 得到s2_gccResult,s2_Nd
+    [h1,h2] = rir_example(X(k,[1,2]),s1r1,s1r2);
+    conv1 = conv(rawWav,h1);
+    conv2 = conv(rawWav,h2);
+    [s2_gccResult,s2_Nd] = gcc_phat_w(conv1,conv2);
+    % 得到s3_gccResult,s3_Nd
+    [h1,h2] = rir_example(X(k,[1,2]),s1r1,s1r2);
+    conv1 = conv(rawWav,h1);
+    conv2 = conv(rawWav,h2);
+    [s3_gccResult,s3_Nd] = gcc_phat_w(conv1,conv2);
+    % 得到s4_gccResult,s4_Nd
+    [h1,h2] = rir_example(X(k,[1,2]),s1r1,s1r2);
+    conv1 = conv(rawWav,h1);
+    conv2 = conv(rawWav,h2);
+    [s4_gccResult,s4_Nd] = gcc_phat_w(conv1,conv2);
+    
     % 通过对 上一时刻的粒子状态 使用 状态方程，得到 这一时刻的粒子状态
     for i=1:numSamples
         QQ=0.01; % 网[---待确定---]
@@ -87,17 +106,29 @@ for k=2:T
         temp(2) = Xparticles(i,k,2);
         disp('粒子位置');
         disp(temp);
-        tdoaT = tdoaT_generator(temp,[1.2,0.5],[1.8,0.5]);
+        s1_tdoaT = tdoaT_generator(temp,s1r1,s1r2);
+        s2_tdoaT = tdoaT_generator(temp,s2r1,s2r2);
+        s3_tdoaT = tdoaT_generator(temp,s3r1,s3r2);
+        s4_tdoaT = tdoaT_generator(temp,s4r1,s4r2);
+        
         % 更新粒子权重
-        weight(i,k) = particle_weight_generator(gccResult,Nd,fs,tdoaT);
+        weight(i,k) = particle_weight_generator(s1_gccResult,s1_Nd,...
+                                                s2_gccResult,s2_Nd,...
+                                                s3_gccResult,s3_Nd,...
+                                                s4_gccResult,s4_Nd,...
+                                                fs,...
+                                                s1_tdoaT,...
+                                                s2_tdoaT,...
+                                                s3_tdoaT,...
+                                                s4_tdoaT);
     end
     
-    figure(3) % 权重图
-    plot3(Xparticles(:,k,1),Xparticles(:,k,2),weight(:,k));
-    axis([0 5 0 5]);
-    jpg = strcat('./jpg/p',num2str(k));
-    jpg = strcat(jpg,'.jpg');
-    saveas(3,jpg);
+    %wxswxs- figure(3) % 权重图
+    %wxswxs- plot3(Xparticles(:,k,1),Xparticles(:,k,2),weight(:,k));
+    %wxswxs- axis([0 5 0 5]);
+    %wxswxs- jpg = strcat('./jpg/p',num2str(k));
+    %wxswxs- jpg = strcat(jpg,'.jpg');
+    %wxswxs- saveas(3,jpg);
     
     weight(:,k)=weight(:,k)./sum(weight(:,k));
 
