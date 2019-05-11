@@ -170,13 +170,6 @@ for k=2:T
                                                 s4_tdoaT);
     end
     
-    %wxswxs- figure(3) % 权重图
-    %wxswxs- plot3(Xparticles(:,k,1),Xparticles(:,k,2),weight(:,k));
-    %wxswxs- axis([0 5 0 5]);
-    %wxswxs- jpg = strcat('./jpg/p',num2str(k));
-    %wxswxs- jpg = strcat(jpg,'.jpg');
-    %wxswxs- saveas(3,jpg);
-    
     weight(:,k)=weight(:,k)./sum(weight(:,k));
     
     %%%%%%%%%%%%%%%%%%%%接下来是PSO优化后的计算权重的步骤%%%%%%%%%%%
@@ -252,7 +245,6 @@ for k=2:T
         s2_tdoaT = tdoaT_generator(temp,s2r1,s2r2);
         s3_tdoaT = tdoaT_generator(temp,s3r1,s3r2);
         s4_tdoaT = tdoaT_generator(temp,s4r1,s4r2);
-        
         % 更新粒子权重
         weight(i,k) = particle_weight_generator(s1_gccResult,s1_Nd,...
                                                 s2_gccResult,s2_Nd,...
@@ -279,7 +271,7 @@ for k=2:T
     outIndex = multinomialR(weight(:,k));
     
     % 产生粒子滤波后的 所有粒子
-    Xpf(:,k,:)= Xparticles(outIndex,k,:);
+    Xpf(:,k,:)= Xpf(outIndex,k,:);
 end
 
 t1 = cputime;
