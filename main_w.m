@@ -5,6 +5,7 @@ clear;
 randn('seed',50);  %#ok<*RAND>
 
 dT = 0.032;
+SNR = 40; % 信噪比
 
 % 麦克风位置
 s1r1 = [2.2,0.5]; s1r2 = [2.8,0.5];
@@ -46,6 +47,7 @@ Zpre_pf=zeros(numSamples,T); % 行代表某一个粒子，列代表某一个时�
 weight=zeros(numSamples,T); % 行代表某一个粒子，列代表某一个时刻，值为这个粒子在当前时刻的 权重
 QQQ = 0.01; % 高斯滤波的权值的平方[---待确认---]
 
+t0 = cputime;
 % 粒子初始化[---待确认---]这里使用了真实值
 Xpf(:,1,:)=X(1,:)+sqrt(QQQ)*randn(numSamples,4); % 初始粒子状态，使用高斯滤波对真实状态处理产生
 
@@ -61,21 +63,29 @@ for k=2:T
     [h1,h2] = rir_example(X(k,[1,2]),s1r1,s1r2);
     conv1 = conv(rawWav,h1);
     conv2 = conv(rawWav,h2);
+    %高斯白噪声 awgn1 = awgn(conv1,SNR);
+    %高斯白噪声 awgn2 = awgn(conv2,SNR);
     [s1_gccResult,s1_Nd] = gcc_phat_w(conv1,conv2);
     % 得到s2_gccResult,s2_Nd
     [h1,h2] = rir_example(X(k,[1,2]),s2r1,s2r2);
     conv1 = conv(rawWav,h1);
     conv2 = conv(rawWav,h2);
+    %高斯白噪声 awgn1 = awgn(conv1,SNR);
+    %高斯白噪声 awgn2 = awgn(conv2,SNR);
     [s2_gccResult,s2_Nd] = gcc_phat_w(conv1,conv2);
     % 得到s3_gccResult,s3_Nd
     [h1,h2] = rir_example(X(k,[1,2]),s3r1,s3r2);
     conv1 = conv(rawWav,h1);
     conv2 = conv(rawWav,h2);
+    %高斯白噪声 awgn1 = awgn(conv1,SNR);
+    %高斯白噪声 awgn2 = awgn(conv2,SNR);
     [s3_gccResult,s3_Nd] = gcc_phat_w(conv1,conv2);
     % 得到s4_gccResult,s4_Nd
     [h1,h2] = rir_example(X(k,[1,2]),s4r1,s4r2);
     conv1 = conv(rawWav,h1);
     conv2 = conv(rawWav,h2);
+    %高斯白噪声 awgn1 = awgn(conv1,SNR);
+    %高斯白噪声 awgn2 = awgn(conv2,SNR);
     [s4_gccResult,s4_Nd] = gcc_phat_w(conv1,conv2);
     
     % 通过对 上一时刻的粒子状态 使用 状态方程，得到 这一时刻的粒子状态
@@ -105,8 +115,6 @@ for k=2:T
         temp = zeros(1,2);
         temp(1) = Xparticles(i,k,1);
         temp(2) = Xparticles(i,k,2);
-        disp('粒子位置');
-        disp(temp);
         s1_tdoaT = tdoaT_generator(temp,s1r1,s1r2);
         s2_tdoaT = tdoaT_generator(temp,s2r1,s2r2);
         s3_tdoaT = tdoaT_generator(temp,s3r1,s3r2);
@@ -142,14 +150,17 @@ for k=2:T
     we = 1;
 end
 
+t1 = cputime;
+t = t1 - t0;
+disp('时间:')
+disp(t);
+disp('秒');
+
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % 最终目标的计算
 Xmean_x_pf=mean(Xpf(:,:,1));
 Xmean_y_pf=mean(Xpf(:,:,2));
 
-% Xmean_pf=mean(Xpf);
-
-% 
 bins=20;
 Xmap_x_pf=zeros(T,1);
 Xmap_y_pf=zeros(T,1);
@@ -165,33 +176,19 @@ for k=1:T
 end
 Xstd_x_pf = zeros(1,T);
 Xstd_y_pf = zeros(1,T);
-for k=1:T
-    Xstd_x_pf(1,k)=std(Xpf(:,k,1)-X(k,1)); 
+
+% 计算RMSE
+Xdiff_pf = zeros(1,T);
+sum = 0;
+for i=1:T
+    temp1 = X(i,1) - Xmean_x_pf(i);
+    temp2 = X(i,2) - Xmean_y_pf(i);
+    Xdiff_pf(i) = temp1^2 + temp2^2;
+    sum = sum + Xdiff_pf(i);
 end
-for k=1:T
-    Xstd_y_pf(1,k)=std(Xpf(:,k,2)-X(k,2)); 
-end
+RMSE = sqrt(1/T * sum);
 
-%--20190508 figure(11);clf;
-%--20190508 subplot(221);
-%--20190508 plot(v);
-%--20190508 xlabel('时间');
-%--20190508 ylabel('测量噪声','fontsize',15);
-%--20190508 subplot(222);
-%--20190508 plot(w);    
-%--20190508 xlabel('时间');
-%--20190508 ylabel('过程噪声','fontsize',15);
-%--20190508 subplot(223);
-%--20190508 plot(X);   
-%--20190508 xlabel('时间','fontsize',15);
-%--20190508 ylabel('状态X','fontsize',15);
-%--20190508 subplot(224);
-%--20190508 plot(Z);   
-%--20190508 xlabel('时间','fontsize',15);
-%--20190508 ylabel('观测Z','fontsize',15);
-
-
-figure(12);clf;  
+figure(12);clf;
 k=1:1:T;
 plot(k,X(:,1),'b',k,Xmean_x_pf,'r',k,Xmap_x_pf,'g'); 
 legend('系统真实状态值','后验均值估计','最大后验概率估计');
@@ -207,95 +204,14 @@ xlabel('次数','fontsize',15);
 ylabel('Y状态估计','fontsize',15);
 saveas(22,'./jpg/Y估计值与真值.jpg'); % 保存
 
-
-%--20190508 figure(13);
-% subplot(121);
-%--20190508 plot(Xmean_x_pf,X(:,1),'+');
-%--20190508 xlabel('X后验均值估计','fontsize',15);
-%--20190508 ylabel('X真值','fontsize',15)
-%--20190508 hold on;
-%--20190508 c=0:1:5;
-%--20190508 plot(c,c,'r');
-%--20190508 axis([0 5 0 5]);
-%--20190508 hold off;
-
-%--20190508 subplot(122);  
-%--20190508 plot(Xmap_pf,X,'+')
-%--20190508 ylabel('真值','fontsize',15)
-%--20190508 xlabel('MAP估计','fontsize',15)
-%--20190508 hold on;
-%--20190508 c=-25:1:25;
-%--20190508 plot(c,c,'r');  
-%--20190508 axis([-25 25 -25 25]);
-%--20190508 hold off;
-
-%--20190508 figure(23);
-% subplot(121);
-%--20190508 plot(Xmean_y_pf,X(:,2),'+');
-%--20190508 xlabel('Y后验均值估计','fontsize',15);
-%--20190508 ylabel('Y真值','fontsize',15)
-%--20190508 hold on;
-%--20190508 c=0:1:5;
-%--20190508 plot(c,c,'r');
-%--20190508 axis([0 5 0 5]);
-%--20190508 hold off;
-
-%--20190508 subplot(122);  
-%--20190508 plot(Xmap_pf,X,'+')
-%--20190508 ylabel('真值','fontsize',15)
-%--20190508 xlabel('MAP估计','fontsize',15)
-%--20190508 hold on;
-%--20190508 c=-25:1:25;
-%--20190508 plot(c,c,'r');  
-%--20190508 axis([-25 25 -25 25]);
-%--20190508 hold off;
- 
-%--20190508 domain=zeros(numSamples,1);
-%--20190508 range=zeros(numSamples,1);
-%--20190508 bins=10;
-%--20190508 support=[-20:1:20];
-
-
-%--20190508 figure(14);hold on; 
-%--20190508 xlabel('样本空间','fontsize',15);
-%--20190508 ylabel('时间','fontsize',15);
-%--20190508 zlabel('后验密度','fontsize',15);
-%--20190508 vect=[0 1];
-%--20190508 caxis(vect);
-%--20190508 for k=1:T
-  
-%--20190508     [range,domain]=hist(Xpf(:,k),support);
-   
-%--20190508     waterfall(domain,k,range);
-%--20190508 end
-%--20190508 axis([-20 20 0 T 0 100]);
- 
-%--20190508 figure(15);
-%--20190508 hold on; box on;
-%--20190508 xlabel('样本空间','fontsize',15);
-%--20190508 ylabel('后验密度','fontsize',15); 
-%--20190508 k=30;   
-%--20190508 [range,domain]=hist(Xpf(:,k),support);
-%--20190508 plot(domain,range);
- 
-%--20190508 XXX=[X(k,1),X(k,1)];
-%--20190508 YYY=[0,max(range)+10]
-%--20190508 line(XXX,YYY,'Color','r');
-%--20190508 axis([min(domain) max(domain) 0 max(range)+10]);
- 
 figure(16);
 k=1:1:T;
-plot(k,Xstd_x_pf,'-');
-xlabel('次数');ylabel('X状态估计误差标准差');
-axis([0,T,0,1]);
-saveas(16,'./jpg/X状态估计误差标准差.jpg'); % 保存
-
-figure(26);
-k=1:1:T;
-plot(k,Xstd_y_pf,'-');
-xlabel('次数');ylabel('Y状态估计误差标准差');
-axis([0,T,0,1]);
-saveas(26,'./jpg/Y状态估计误差标准差.jpg'); % 保存
+plot(k,Xdiff_pf,'-');
+xlabel('次数');ylabel('状态估计误差');
+titleRMSE = strcat('RMSE = ',num2str(RMSE) );
+title(titleRMSE);
+axis([0,T,0,max(Xdiff_pf) ] );
+saveas(16,'./jpg/RMSE.jpg'); % 保存
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 

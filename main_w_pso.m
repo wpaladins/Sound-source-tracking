@@ -5,6 +5,7 @@ clear;
 randn('seed',50);  %#ok<*RAND>
 
 dT = 0.032;
+SNR = 40; % 信噪比
 
 % 麦克风位置
 s1r1 = [2.2,0.5]; s1r2 = [2.8,0.5];
@@ -84,6 +85,7 @@ particleCost = zeros(numSamples);
 Spf = zeros(T,2);
 %%%%%%%%%%%%%%%%%%%%PSO%%%%%%%%%%%%%%%%%%%%
 
+t0 = cputime;
 % 粒子初始化[---待确认---]这里使用了真实值
 Xpf(:,1,:)=X(1,:)+sqrt(QQQ)*randn(numSamples,4); % 初始粒子状态，使用高斯滤波对真实状态处理产生
 
@@ -99,21 +101,29 @@ for k=2:T
     [h1,h2] = rir_example(X(k,[1,2]),s1r1,s1r2);
     conv1 = conv(rawWav,h1);
     conv2 = conv(rawWav,h2);
+    %高斯白噪声 awgn1 = awgn(conv1,SNR);
+    %高斯白噪声 awgn2 = awgn(conv2,SNR);
     [s1_gccResult,s1_Nd] = gcc_phat_w(conv1,conv2);
     % 得到s2_gccResult,s2_Nd
     [h1,h2] = rir_example(X(k,[1,2]),s2r1,s2r2);
     conv1 = conv(rawWav,h1);
     conv2 = conv(rawWav,h2);
+    %高斯白噪声 awgn1 = awgn(conv1,SNR);
+    %高斯白噪声 awgn2 = awgn(conv2,SNR);
     [s2_gccResult,s2_Nd] = gcc_phat_w(conv1,conv2);
     % 得到s3_gccResult,s3_Nd
     [h1,h2] = rir_example(X(k,[1,2]),s3r1,s3r2);
     conv1 = conv(rawWav,h1);
     conv2 = conv(rawWav,h2);
+    %高斯白噪声 awgn1 = awgn(conv1,SNR);
+    %高斯白噪声 awgn2 = awgn(conv2,SNR);
     [s3_gccResult,s3_Nd] = gcc_phat_w(conv1,conv2);
     % 得到s4_gccResult,s4_Nd
     [h1,h2] = rir_example(X(k,[1,2]),s4r1,s4r2);
     conv1 = conv(rawWav,h1);
     conv2 = conv(rawWav,h2);
+    %高斯白噪声 awgn1 = awgn(conv1,SNR);
+    %高斯白噪声 awgn2 = awgn(conv2,SNR);
     [s4_gccResult,s4_Nd] = gcc_phat_w(conv1,conv2);
     
     % 通过对 上一时刻的粒子状态 使用 状态方程，得到 这一时刻的粒子状态
@@ -168,12 +178,6 @@ for k=2:T
     %wxswxs- saveas(3,jpg);
     
     weight(:,k)=weight(:,k)./sum(weight(:,k));
-
-    % 粒子 重新采样
-    outIndex = multinomialR(weight(:,k));
-    
-    % 产生粒子滤波后的 所有粒子
-    Xpf(:,k,:)= Xparticles(outIndex,k,:);
     
     %%%%%%%%%%%%%%%%%%%%接下来是PSO优化后的计算权重的步骤%%%%%%%%%%%
     % 对粒子滤波产生的状态估计进行处理
@@ -261,7 +265,6 @@ for k=2:T
                                                 s4_tdoaT);
     end
     
-    
     Spf(k,:)=GlobalBestPosition;
     
     % 重新置0
@@ -269,7 +272,21 @@ for k=2:T
     GlobalBestPosition = [0,0];
     particleBestCost = zeros(numSamples);
     particleBestPosition = zeros(numSamples,2);
+    
+    weight(:,k)=weight(:,k)./sum(weight(:,k));
+
+    % 粒子 重新采样
+    outIndex = multinomialR(weight(:,k));
+    
+    % 产生粒子滤波后的 所有粒子
+    Xpf(:,k,:)= Xparticles(outIndex,k,:);
 end
+
+t1 = cputime;
+t = t1 - t0;
+disp('时间:')
+disp(t);
+disp('秒');
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % 最终目标的计算
@@ -291,12 +308,17 @@ for k=1:T
 end
 Xstd_x_pf = zeros(1,T);
 Xstd_y_pf = zeros(1,T);
-for k=1:T
-    Xstd_x_pf(1,k)=std(Xpf(:,k,1)-X(k,1));
+
+% 计算RMSE
+Xdiff_pf = zeros(1,T);
+sum = 0;
+for i=1:T
+    temp1 = X(i,1) - Xmean_x_pf(i);
+    temp2 = X(i,2) - Xmean_y_pf(i);
+    Xdiff_pf(i) = temp1^2 + temp2^2;
+    sum = sum + Xdiff_pf(i);
 end
-for k=1:T
-    Xstd_y_pf(1,k)=std(Xpf(:,k,2)-X(k,2));
-end
+RMSE = sqrt(1/T * sum);
 
 figure(12);clf;
 k=1:1:T;
@@ -316,17 +338,12 @@ saveas(22,'./jpg/Y估计值与真值.jpg'); % 保存
 
 figure(16);
 k=1:1:T;
-plot(k,Xstd_x_pf,'-');
-xlabel('次数');ylabel('X状态估计误差标准差');
-axis([0,T,0,1]);
-saveas(16,'./jpg/X状态估计误差标准差.jpg'); % 保存
-
-figure(26);
-k=1:1:T;
-plot(k,Xstd_y_pf,'-');
-xlabel('次数');ylabel('Y状态估计误差标准差');
-axis([0,T,0,1]);
-saveas(26,'./jpg/Y状态估计误差标准差.jpg'); % 保存
+plot(k,Xdiff_pf,'-');
+xlabel('次数');ylabel('状态估计误差');
+titleRMSE = strcat('RMSE = ',num2str(RMSE) );
+title(titleRMSE);
+axis([0,T,0,max(Xdiff_pf) ] );
+saveas(16,'./jpg/RMSE.jpg'); % 保存
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
