@@ -23,7 +23,7 @@ s4_RSKDS = 1000 * s4_gccResult(s4_Nd + s4_DS);
 RSKDS = (s1_RSKDS + s2_RSKDS + s3_RSKDS + s4_RSKDS)/4;
 
 xi0 = 0;
-gamma = 3;
+gamma = 4;
 
 weight = (max(RSKDS,xi0)) ^ gamma;
 

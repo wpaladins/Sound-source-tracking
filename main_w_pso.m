@@ -33,11 +33,6 @@ for i=1:T-1 % 速度只有T为1:T-1有
     X(i,4) = (X(i+1,2) - X(i,2) ) / dT; % y方向的速度
 end % 速度完成
 
-% 2.3. 真实状态信息展示
-% figure;
-% plot(X(:,1),X(:,2),'b.');
-% axis([0 5 0 5]);
-
 % 3. 粒子滤波
 % 3.1. 各项参数
 numSamples = 100;
@@ -82,10 +77,8 @@ iparticles = zeros(T,2);
 particlePosition = zeros(numSamples,2);
 particleVelocity = zeros(numSamples,2);
 particleCost = zeros(numSamples);
-Spf = zeros(T,2);
 %%%%%%%%%%%%%%%%%%%%PSO%%%%%%%%%%%%%%%%%%%%
 
-t0 = cputime;
 % 粒子初始化[---待确认---]这里使用了真实值
 Xpf(:,1,:)=X(1,:)+sqrt(QQQ)*randn(numSamples,4); % 初始粒子状态，使用高斯滤波对真实状态处理产生
 
@@ -182,7 +175,7 @@ for k=2:T
     %初始化粒子的状态
     for i=1:nPop
         particlePosition(i,:) = Xparticles(i,k,1:2); % 将重采样后粒子的实际值带入到particle.position中去
-        particleVelocity(i,:) = [0,0]; % 粒子所有的初始速度为0
+        particleVelocity(i,:) = 2 * rand(1,2); % 粒子所有的初始速度为 均匀分布随机数*2
         particleCost(i) = CostFunction(nPop,particlePosition(i,:),iparticles(k,:));%对这些测量值计算权重
         % Update the Personal Best
         particleBestCost(i) = particleCost(i);
@@ -198,7 +191,7 @@ for k=2:T
     for it=1:MaxIt
         for i=1:nPop
             %这里是由同一时刻的nPop个粒子的真实状态，套入函数中来计算nPop个粒子的测量值
-            w1=0.3*exp(1-it/MaxIt);
+            w1=0.5*exp(1-it/MaxIt);
             particleVelocity(i,1) = w1*particleVelocity(i,1) ... % x
                 + c1*rand().*(particleBestPosition(i,1) - particlePosition(i,1)) ...
                 + c2*rand().*(GlobalBestPosition(1) - particlePosition(i,1));
@@ -257,8 +250,6 @@ for k=2:T
                                                 s4_tdoaT);
     end
     
-    Spf(k,:)=GlobalBestPosition;
-    
     % 重新置0
     GlobalBestCost = 0;
     GlobalBestPosition = [0,0];
@@ -273,12 +264,6 @@ for k=2:T
     % 产生粒子滤波后的 所有粒子
     Xpf(:,k,:)= Xpf(outIndex,k,:);
 end
-
-t1 = cputime;
-t = t1 - t0;
-disp('时间:')
-disp(t);
-disp('秒');
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % 最终目标的计算
@@ -334,7 +319,7 @@ plot(k,Xdiff_pf,'-');
 xlabel('次数');ylabel('状态估计误差');
 titleRMSE = strcat('RMSE = ',num2str(RMSE) );
 title(titleRMSE);
-axis([0,T,0,max(Xdiff_pf) ] );
+axis([0,T,0,5] );
 saveas(16,'./jpg/RMSE.jpg'); % 保存
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
