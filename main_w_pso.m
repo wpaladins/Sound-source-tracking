@@ -25,9 +25,11 @@ xn_frams = framing(rawWav,fs,fram_time,fram_step_time,win);
 % 2. 产生所有的真实状态，以及观测值
 % 2.1. 真实状态
 T = 50; % 说话人位置改变次数，帧数
+X = zeros(50,4);
 R = 1.5;
 t = linspace(pi,2*pi,T);
-X = [(2.5 + R*cos(t))',(3 + R*sin(t))']; % 位置完成
+X(:,1:2) = [(2.5 + R*cos(t))',(3 + R*sin(t))'];
+
 for i=1:T-1 % 速度只有T为1:T-1有
     X(i,3) = (X(i+1,1) - X(i,1) ) / dT; % x方向的速度
     X(i,4) = (X(i+1,2) - X(i,2) ) / dT; % y方向的速度
@@ -35,12 +37,14 @@ end % 速度完成
 
 % 3. 粒子滤波
 % 3.1. 各项参数
-numSamples = 100;
+numSamples = 25;
 Xpf=zeros(numSamples,T,4); % 行代表某一个粒子，列代表某一个时刻，值为这个粒子在当前时刻的 粒子滤波后（除初始化）的 状态
 Xparticles=zeros(numSamples,T,4); % 行代表某一个粒子，列代表某一个时刻，值为这个粒子在当前时刻的 粒子滤波前的 状态
 Zpre_pf=zeros(numSamples,T); % 行代表某一个粒子，列代表某一个时刻，值为这个粒子在当前时刻的 观测值
 weight=zeros(numSamples,T); % 行代表某一个粒子，列代表某一个时刻，值为这个粒子在当前时刻的 权重
 QQQ = 0.01; % 高斯滤波的权值的平方[---待确认---]
+
+Tpsopf = zeros(1,T);
 
 %%%%%%%%%%%%%%%%%%%%PSO%%%%%%%%%%%%%%%%%%%%
 problem.CostFunction = @(R,x,y)CostFunction(R,x,y);
@@ -140,6 +144,8 @@ for k=2:T
     jpg = strcat('./jpg/',num2str(k));
     jpg = strcat(jpg,'.jpg');
     saveas(2,jpg);
+    
+    tic;
     
     % 粒子权重处理
     for i=1:numSamples
@@ -263,12 +269,14 @@ for k=2:T
     
     % 产生粒子滤波后的 所有粒子
     Xpf(:,k,:)= Xpf(outIndex,k,:);
+    
+    Tpsopf(k) = toc;
 end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % 最终目标的计算
-Xmean_x_pf=mean(Xpf(:,:,1));
-Xmean_y_pf=mean(Xpf(:,:,2));
+Xmean_x_psopf=mean(Xpf(:,:,1));
+Xmean_y_psopf=mean(Xpf(:,:,2));
 
 bins=20;
 Xmap_x_pf=zeros(T,1);
@@ -287,41 +295,47 @@ Xstd_x_pf = zeros(1,T);
 Xstd_y_pf = zeros(1,T);
 
 % 计算RMSE
-Xdiff_pf = zeros(1,T);
+Xdiff_psopf = zeros(1,T);
 sum = 0;
 for i=1:T
-    temp1 = X(i,1) - Xmean_x_pf(i);
-    temp2 = X(i,2) - Xmean_y_pf(i);
-    Xdiff_pf(i) = temp1^2 + temp2^2;
-    sum = sum + Xdiff_pf(i);
+    temp1 = X(i,1) - Xmean_x_psopf(i);
+    temp2 = X(i,2) - Xmean_y_psopf(i);
+    Xdiff_psopf(i) = temp1^2 + temp2^2;
+    sum = sum + Xdiff_psopf(i);
 end
-RMSE = sqrt(1/T * sum);
+RMSE_psopf = sqrt(1/T * sum);
 
 figure(12);clf;
 k=1:1:T;
-plot(k,X(:,1),'b',k,Xmean_x_pf,'r',k,Xmap_x_pf,'g'); 
-legend('系统真实状态值','后验均值估计','最大后验概率估计');
-xlabel('次数','fontsize',15);
-ylabel('X状态估计','fontsize',15);
+plot(k,X(:,1),'b',k,Xmean_x_psopf,'r'); 
+legend('True X value','Posterior mean estimate of X');
+xlabel('Time frame','fontsize',15);
+ylabel('Value','fontsize',15);
+axis([0 50 0 5]);
+title('The comparison between True X value and Posterior mean estimate of X','fontsize',15);
 saveas(12,'./jpg/X估计值与真值.jpg'); % 保存
 
-figure(22);clf;  
+figure(22);clf;
 k=1:1:T;
-plot(k,X(:,2),'b',k,Xmean_y_pf,'r',k,Xmap_y_pf,'g'); 
-legend('系统真实状态值','后验均值估计','最大后验概率估计');
-xlabel('次数','fontsize',15);
-ylabel('Y状态估计','fontsize',15);
+plot(k,X(:,2),'b',k,Xmean_y_psopf,'r'); 
+legend('True Y value','Posterior mean estimate of Y');
+xlabel('Time frame','fontsize',15);
+ylabel('Value','fontsize',15);
+axis([0 50 0 5]);
+title('The comparison between True Y value and Posterior mean estimate of Y','fontsize',15);
 saveas(22,'./jpg/Y估计值与真值.jpg'); % 保存
 
 figure(16);
 k=1:1:T;
-plot(k,Xdiff_pf,'-');
-xlabel('次数');ylabel('状态估计误差');
-titleRMSE = strcat('RMSE = ',num2str(RMSE) );
-title(titleRMSE);
+plot(k,Xdiff_psopf,'-');
+xlabel('Time frame','fontsize',15);
+ylabel('Deviation','fontsize',15);
+title('Deviation of each time frame');
 axis([0,T,0,5] );
 saveas(16,'./jpg/RMSE.jpg'); % 保存
 
+% 保存数据
+save('./mat/psopf.mat','X','Tpsopf','Xmean_x_psopf','Xmean_y_psopf','Xdiff_psopf','RMSE_psopf');
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 % 程序结束提醒
