@@ -2,10 +2,21 @@ clc;
 clear;
 
 % 1. load
+track = 2; % track = 1圆形轨迹；track = 2三角轨迹；track = <其他>直线轨迹
+loadlocation = './mat/';
+if track == 1
+    loadlocation = strcat(loadlocation,'semicircle/');
+elseif track == 2
+    loadlocation = strcat(loadlocation,'triangle/');
+else
+    loadlocation = strcat(loadlocation,'straightLine/');
+end
+loadlocation_pf = strcat(loadlocation,'pf.mat');
+loadlocation_psopf = strcat(loadlocation,'psopf.mat');
 % 1.1. pf
-load('./mat/pf.mat');
+load(loadlocation_pf);
 % 1.2. psopf
-load('./mat/psopf.mat');
+load(loadlocation_psopf);
 % 1.3. 麦克风位置
 s1r1 = [2.2,0.5]; s1r2 = [2.8,0.5];
 s2r1 = [2.2,4.5]; s2r2 = [2.8,4.5];
@@ -22,27 +33,31 @@ sry = [s1r1(2),s1r2(2),...
 % 1.4. 运动轨迹
 T = 50; % 说话人位置改变次数，帧数
 X = zeros(50,4);
-R = 1.5;
-t = linspace(pi,2*pi,T);
-X(:,1:2) = [(2.5 + R*cos(t))',(3 + R*sin(t))'];
-%三角轨迹 T1 = round(T/2);
-%三角轨迹 a = [1,2]; b = [2.5,1]; c = [4,2];
-%三角轨迹 t1x = linspace(a(1),b(1),T1);
-%三角轨迹 t1y = linspace(a(2),b(2),T1);
-%三角轨迹 t2x = linspace(b(1),c(1),T - T1 + 1);
-%三角轨迹 t2y = linspace(b(2),c(2),T - T1 + 1);
-%三角轨迹 X(1:T1,1:2) = [t1x',t1y'];
-%三角轨迹 X(T1:T,1:2) = [t2x',t2y'];
-%直线轨迹 t = linspace(0.5,4.5,T);
-%直线轨迹 X(:,1:2) = [t',t'];
+if track == 1
+    R = 1.5;
+    t = linspace(pi,2*pi,T);
+    X(:,1:2) = [(2.5 + R*cos(t))',(3 + R*sin(t))'];
+elseif track == 2
+    T1 = round(T/2);
+    a = [1,2]; b = [2.5,1]; c = [4,2];
+    t1x = linspace(a(1),b(1),T1);
+    t1y = linspace(a(2),b(2),T1);
+    t2x = linspace(b(1),c(1),T - T1 + 1);
+    t2y = linspace(b(2),c(2),T - T1 + 1);
+    X(1:T1,1:2) = [t1x',t1y'];
+    X(T1:T,1:2) = [t2x',t2y'];
+else
+    t = linspace(0.5,4.5,T);
+    X(:,1:2) = [t',t'];
+end
 
 % 2. 画图
 % 2.1. 时间
 figure(1);
 hold on;box on;
 p1 = plot(1:T,Tpf,'-go','lineWidth',1); % SIR-GCF-PF
-p2 = plot(1:T,Tpsopf,'-r^','lineWidth',1); % PSO-GCF-PF
-legend([p1,p2],'SIR-GCF-PF time','PSO-GCF-PF time');
+p2 = plot(1:T,Tpsopf,'-r^','lineWidth',1); % APSO-GCF-PF
+legend([p1,p2],'SIR-GCF-PF time','APSO-GCF-PF time');
 saveas(1,'./mat/jpg/时间.jpg'); % 保存
 T_mean_pf = mean(Tpf);
 T_mean_psopf = mean(Tpsopf);
@@ -58,7 +73,7 @@ hold on;box on;
 p1 = plot(1:T,X(:,1)','-b.','lineWidth',1);
 p2 = plot(1:T,Xmean_x_pf,'-go','lineWidth',1);
 p3 = plot(1:T,Xmean_x_psopf,'-r^','lineWidth',1);
-legend([p1,p2,p3],'True X value','SIR-GCF-PF posterior mean estimate of X','PSO-GCF-PF posterior mean estimate of X');
+legend([p1,p2,p3],'True X value','SIR-GCF-PF posterior mean estimate of X','APSO-GCF-PF posterior mean estimate of X');
 xlabel('Time frame','fontsize',15);
 ylabel('Value','fontsize',15);
 axis([0 50 0 5]);
@@ -71,7 +86,7 @@ hold on;box on;
 p1 = plot(1:T,X(:,2)','-b.','lineWidth',1);
 p2 = plot(1:T,Xmean_y_pf,'-go','lineWidth',1);
 p3 = plot(1:T,Xmean_y_psopf,'-r^','lineWidth',1);
-legend([p1,p2,p3],'True Y value','SIR-GCF-PF posterior mean estimate of Y','PSO-GCF-PF posterior mean estimate of Y');
+legend([p1,p2,p3],'True Y value','SIR-GCF-PF posterior mean estimate of Y','APSO-GCF-PF posterior mean estimate of Y');
 xlabel('Time frame','fontsize',15);
 ylabel('Value','fontsize',15);
 axis([0 50 0 5]);
@@ -83,7 +98,7 @@ figure(4);
 hold on;box on;
 p1 = plot(1:T,Xdiff_pf,'-go','lineWidth',1);
 p2 = plot(1:T,Xdiff_psopf,'-r^','lineWidth',1);
-legend([p1,p2],'SIR-GCF-PF deviation','PSO-GCF-PF deviation');
+legend([p1,p2],'SIR-GCF-PF deviation','APSO-GCF-PF deviation');
 xlabel('Time frame','fontsize',15);
 ylabel('Deviation','fontsize',15);
 title('Deviation of each time frame');
@@ -102,5 +117,5 @@ saveas(5,'./mat/jpg/运动轨迹和麦克风位置图.jpg'); % 保存
 % 3. 显示RMSE
 disp('SIR-GCF-PF RMSE');
 disp(RMSE_pf);
-disp('PSO-GCF-PF RMSE');
+disp('APSO-GCF-PF RMSE');
 disp(RMSE_psopf);

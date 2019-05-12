@@ -26,9 +26,24 @@ xn_frams = framing(rawWav,fs,fram_time,fram_step_time,win);
 % 2.1. 真实状态
 T = 50; % 说话人位置改变次数，帧数
 X = zeros(50,4);
-R = 1.5;
-t = linspace(pi,2*pi,T);
-X(:,1:2) = [(2.5 + R*cos(t))',(3 + R*sin(t))'];
+track = 2; % track = 1圆形轨迹；track = 2三角轨迹；track = <其他>直线轨迹
+if track == 1
+    R = 1.5;
+    t = linspace(pi,2*pi,T);
+    X(:,1:2) = [(2.5 + R*cos(t))',(3 + R*sin(t))'];
+elseif track == 2
+    T1 = round(T/2);
+    a = [1,2]; b = [2.5,1]; c = [4,2];
+    t1x = linspace(a(1),b(1),T1);
+    t1y = linspace(a(2),b(2),T1);
+    t2x = linspace(b(1),c(1),T - T1 + 1);
+    t2y = linspace(b(2),c(2),T - T1 + 1);
+    X(1:T1,1:2) = [t1x',t1y'];
+    X(T1:T,1:2) = [t2x',t2y'];
+else
+    t = linspace(0.5,4.5,T);
+    X(:,1:2) = [t',t'];
+end
 
 for i=1:T-1 % 速度只有T为1:T-1有
     X(i,3) = (X(i+1,1) - X(i,1) ) / dT; % x方向的速度
@@ -205,7 +220,16 @@ axis([0,T,0,5] );
 saveas(16,'./jpg/RMSE.jpg'); % 保存
 
 % 保存数据
-save('./mat/pf.mat','Tpf','Xmean_x_pf','Xmean_y_pf','Xdiff_pf','RMSE_pf');
+savelocation = './mat/';
+if track == 1
+    savelocation = strcat(savelocation,'semicircle/');
+elseif track == 2
+    savelocation = strcat(savelocation,'triangle/');
+else
+    savelocation = strcat(savelocation,'straightLine/');
+end
+savelocation = strcat(savelocation,'pf.mat');
+save(savelocation,'Tpf','Xmean_x_pf','Xmean_y_pf','Xdiff_pf','RMSE_pf');
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 % 程序结束提醒
