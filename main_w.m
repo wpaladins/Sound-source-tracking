@@ -26,7 +26,7 @@ xn_frams = framing(rawWav,fs,fram_time,fram_step_time,win);
 % 2.1. 真实状态
 T = 50; % 说话人位置改变次数，帧数
 X = zeros(50,4);
-track = 2; % track = 1圆形轨迹；track = 2三角轨迹；track = <其他>直线轨迹
+track = 1; % track = 1圆形轨迹；track = 2三角轨迹；track = <其他>直线轨迹
 if track == 1
     R = 1.5;
     t = linspace(pi,2*pi,T);
@@ -189,35 +189,6 @@ for i=1:T
     sum = sum + Xdiff_pf(i);
 end
 RMSE_pf = sqrt(1/T * sum);
-
-figure(12);clf;
-k=1:1:T;
-plot(k,X(:,1),'b',k,Xmean_x_pf,'r'); 
-legend('True X value','Posterior mean estimate of X');
-xlabel('Time frame','fontsize',15);
-ylabel('Value','fontsize',15);
-axis([0 50 0 5]);
-title('The comparison between True X value and Posterior mean estimate of X','fontsize',15);
-saveas(12,'./jpg/X估计值与真值.jpg'); % 保存
-
-figure(22);clf;
-k=1:1:T;
-plot(k,X(:,2),'b',k,Xmean_y_pf,'r'); 
-legend('True Y value','Posterior mean estimate of Y');
-xlabel('Time frame','fontsize',15);
-ylabel('Value','fontsize',15);
-axis([0 50 0 5]);
-title('The comparison between True Y value and Posterior mean estimate of Y','fontsize',15);
-saveas(22,'./jpg/Y估计值与真值.jpg'); % 保存
-
-figure(16);
-k=1:1:T;
-plot(k,Xdiff_pf,'-');
-xlabel('Time frame','fontsize',15);
-ylabel('Deviation','fontsize',15);
-title('Deviation of each time frame');
-axis([0,T,0,5] );
-saveas(16,'./jpg/RMSE.jpg'); % 保存
 
 % 保存数据
 savelocation = './mat/';

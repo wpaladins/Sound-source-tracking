@@ -59,7 +59,7 @@ Zpre_pf=zeros(numSamples,T); % 行代表某一个粒子，列代表某一个时�
 weight=zeros(numSamples,T); % 行代表某一个粒子，列代表某一个时刻，值为这个粒子在当前时刻的 权重
 QQQ = 0.01; % 高斯滤波的权值的平方[---待确认---]
 
-Tpsopf = zeros(1,T);
+Tnpsopf = zeros(1,T);
 
 %%%%%%%%%%%%%%%%%%%%PSO%%%%%%%%%%%%%%%%%%%%
 problem.CostFunction = @(R,x,y)CostFunction(R,x,y);
@@ -248,6 +248,30 @@ for k=2:T
                     GlobalBestPosition = particleBestPosition(i,:);
                 end
             end
+            
+            % 2019-05-26 适应度操作
+            if i == 1
+                continue;
+            elseif particleCost(i) < particleCost(i - 1)
+                randPartcles = randperm(numSamples,2);
+                particleVelocity(i,1) = abs(randn() )*(Xparticles(randPartcles(1),k,1) - Xparticles(randPartcles(2),k,1));
+                particleVelocity(i,2) = abs(randn() )*(Xparticles(randPartcles(1),k,2) - Xparticles(randPartcles(2),k,2));
+            else
+                Dtemp_x = max(Xparticles(:,k,3) ) - min(Xparticles(:,k,3) );
+                Dtemp_y = max(Xparticles(:,k,4) ) - min(Xparticles(:,k,4) );
+                p = 0.01;
+                g = 0.005;
+                r = rand(1,4);
+                if r(1) < p % 变异
+                    if r(2) < g
+                        particleVelocity(i,1) = -0.1 * r(3) * Dtemp_x;
+                        particleVelocity(i,2) = -0.1 * r(3) * Dtemp_y;
+                    else
+                        particleVelocity(i,1) = 0.1 * r(4) * Dtemp_x;
+                        particleVelocity(i,2) = 0.1 * r(4) * Dtemp_y;
+                    end
+                end
+            end
         end
     end
     
@@ -285,13 +309,13 @@ for k=2:T
     % 产生粒子滤波后的 所有粒子
     Xpf(:,k,:)= Xpf(outIndex,k,:);
     
-    Tpsopf(k) = toc;
+    Tnpsopf(k) = toc;
 end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % 最终目标的计算
-Xmean_x_psopf=mean(Xpf(:,:,1));
-Xmean_y_psopf=mean(Xpf(:,:,2));
+Xmean_x_npsopf=mean(Xpf(:,:,1));
+Xmean_y_npsopf=mean(Xpf(:,:,2));
 
 bins=20;
 Xmap_x_pf=zeros(T,1);
@@ -310,15 +334,15 @@ Xstd_x_pf = zeros(1,T);
 Xstd_y_pf = zeros(1,T);
 
 % 计算RMSE
-Xdiff_psopf = zeros(1,T);
+Xdiff_npsopf = zeros(1,T);
 sum = 0;
 for i=1:T
-    temp1 = X(i,1) - Xmean_x_psopf(i);
-    temp2 = X(i,2) - Xmean_y_psopf(i);
-    Xdiff_psopf(i) = temp1^2 + temp2^2;
-    sum = sum + Xdiff_psopf(i);
+    temp1 = X(i,1) - Xmean_x_npsopf(i);
+    temp2 = X(i,2) - Xmean_y_npsopf(i);
+    Xdiff_npsopf(i) = temp1^2 + temp2^2;
+    sum = sum + Xdiff_npsopf(i);
 end
-RMSE_psopf = sqrt(1/T * sum);
+RMSE_npsopf = sqrt(1/T * sum);
 
 % 保存数据
 savelocation = './mat/';
@@ -329,8 +353,8 @@ elseif track == 2
 else
     savelocation = strcat(savelocation,'straightLine/');
 end
-savelocation = strcat(savelocation,'psopf.mat');
-save(savelocation,'X','Tpsopf','Xmean_x_psopf','Xmean_y_psopf','Xdiff_psopf','RMSE_psopf');
+savelocation = strcat(savelocation,'npsopf.mat');
+save(savelocation,'Tnpsopf','Xmean_x_npsopf','Xmean_y_npsopf','Xdiff_npsopf','RMSE_npsopf');
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 % 程序结束提醒
