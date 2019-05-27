@@ -68,7 +68,17 @@ Xpf(:,1,:)=X(1,:)+sqrt(QQQ)*randn(numSamples,4); % 初始粒子状态，使用�
 figure(1);
 plot(Xpf(:,1,1),Xpf(:,1,2),'g.',X(1,1),X(1,2),'r.');
 axis([0 5 0 5]);
-saveas(1,'./jpg/1.jpg');
+saveFolder = './jpg/';
+if track == 1
+    saveFolder = strcat(saveFolder,'semicircle/');
+elseif track == 2
+    saveFolder = strcat(saveFolder,'triangle/');
+else
+    saveFolder = strcat(saveFolder,'straightLine/');
+end
+saveFolder = strcat(saveFolder,'pf/');
+saveJpg = strcat(saveFolder,'1.jpg');
+saveas(1,saveJpg);
 
 % 粒子滤波核心循环
 for k=2:T
@@ -119,9 +129,9 @@ for k=2:T
     plot(Xparticles(:,k,1),Xparticles(:,k,2),'g.',X(k,1),X(k,2),'r.',X(k-1,1),X(k-1,2),'b.',Xpf(:,k-1,1),Xpf(:,k-1,2),'y.');
     axis([0 5 0 5]);
     title(num2str(k));
-    jpg = strcat('./jpg/',num2str(k));
-    jpg = strcat(jpg,'.jpg');
-    saveas(2,jpg);
+    saveJpg = strcat(saveFolder,num2str(k));
+    saveJpg = strcat(saveJpg,'.jpg');
+    saveas(2,saveJpg);
     
     tic;
     
